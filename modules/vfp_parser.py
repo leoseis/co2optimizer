@@ -2,12 +2,11 @@ import pandas as pd
 
 def parse_eclipse_vfp(file):
     """
-    Convert ECLIPSE VFP .INC file to DataFrame
+    Convert simplified ECLIPSE VFP .INC file to DataFrame
     """
 
     lines = file.read().decode("utf-8").splitlines()
 
-    data = []
     thp_values = []
     rate_values = []
     bhfp_table = []
@@ -17,9 +16,10 @@ def parse_eclipse_vfp(file):
     for line in lines:
         line = line.strip()
 
-        if not line or line.startswith("--"):
+        if not line:
             continue
 
+        # Detect section headers FIRST
         if "THP" in line.upper():
             mode = "thp"
             continue
@@ -28,10 +28,18 @@ def parse_eclipse_vfp(file):
             mode = "rate"
             continue
 
-        if "/" in line:
-            line = line.replace("/", "")
+        if "BHFP" in line.upper():
+            mode = "bhfp"
+            continue
 
-        values = [float(x) for x in line.split() if x]
+        # Remove slash
+        line = line.replace("/", "")
+
+        # Skip lines that contain non-numeric characters
+        if not any(char.isdigit() for char in line):
+            continue
+
+        values = [float(x) for x in line.split()]
 
         if mode == "thp":
             thp_values.extend(values)
@@ -39,7 +47,7 @@ def parse_eclipse_vfp(file):
         elif mode == "rate":
             rate_values.extend(values)
 
-        else:
+        elif mode == "bhfp":
             bhfp_table.append(values)
 
     # Build DataFrame
@@ -54,9 +62,7 @@ def parse_eclipse_vfp(file):
                     "Rate": rate,
                     "BHFP": bhfp
                 })
-            except:
+            except IndexError:
                 continue
 
-    df = pd.DataFrame(records)
-
-    return df
+    return pd.DataFrame(records)
