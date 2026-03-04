@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import os
 from modules.vfp_parser import interpolate_bhfp
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 st.set_page_config(page_title="CO₂ VFP Optimizer", layout="wide")
 
@@ -52,3 +55,28 @@ st.divider()
 
 st.subheader("VFP Table Preview")
 st.dataframe(df)
+
+st.divider()
+st.subheader("3D BHFP Surface")
+
+# Create mesh grid
+thp_vals = np.linspace(df["THP"].min(), df["THP"].max(), 30)
+rate_vals = np.linspace(df["Rate"].min(), df["Rate"].max(), 30)
+
+THP_grid, RATE_grid = np.meshgrid(thp_vals, rate_vals)
+BHFP_grid = np.zeros_like(THP_grid)
+
+for i in range(THP_grid.shape[0]):
+    for j in range(THP_grid.shape[1]):
+        BHFP_grid[i, j] = interpolate_bhfp(df, THP_grid[i, j], RATE_grid[i, j])
+
+# Plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(THP_grid, RATE_grid, BHFP_grid)
+
+ax.set_xlabel("THP")
+ax.set_ylabel("Rate")
+ax.set_zlabel("BHFP")
+
+st.pyplot(fig)
