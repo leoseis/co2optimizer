@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-
-from modules.vfp_parser import parse_eclipse_vfp, interpolate_bhfp
+from modules.vfp_parser import interpolate_bhfp
 
 st.set_page_config(page_title="CO₂ VFP Optimizer", layout="wide")
 
