@@ -4,6 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import plotly.graph_objects as go
 
 from modules.vfp_parser import parse_eclipse_vfp, interpolate_bhfp
 
@@ -61,26 +62,14 @@ st.subheader("VFP Table Preview")
 st.dataframe(df)
 
 st.divider()
+st.subheader("Injection Optimization")
 
-st.subheader("3D BHFP Surface")
-
-# Create mesh grid
-thp_vals = np.linspace(df["THP"].min(), df["THP"].max(), 30)
-rate_vals = np.linspace(df["Rate"].min(), df["Rate"].max(), 30)
-
-THP_grid, RATE_grid = np.meshgrid(thp_vals, rate_vals)
-BHFP_grid = np.zeros_like(THP_grid)
-
-# Fill BHFP grid using interpolation
-for i in range(THP_grid.shape[0]):
-    for j in range(THP_grid.shape[1]):
-        BHFP_grid[i, j] = interpolate_bhfp(df, THP_grid[i, j], RATE_grid[i, j])
-
-# -----------------------------
-# Optimization Logic
-# -----------------------------
-
-bhfp_limit = 420  # safety pressure limit
+bhfp_limit = st.sidebar.slider(
+    "Maximum Safe BHFP",
+    min_value=float(df["BHFP"].min()),
+    max_value=float(df["BHFP"].max()),
+    value=float(df["BHFP"].max()) * 0.9
+)
 
 best_rate = None
 best_bhfp = None
@@ -93,32 +82,69 @@ for r in sorted(df["Rate"].unique()):
         best_rate = r
         best_bhfp = bhfp_val
 
-# -----------------------------
-# Plot 3D Surface
-# -----------------------------
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
 
-# Plot BHFP surface
-ax.plot_surface(THP_grid, RATE_grid, BHFP_grid, alpha=0.7)
+st.divider()
+st.subheader("Interactive 3D BHFP Surface")
 
-# Plot optimal point
-if best_rate is not None:
-    optimal_bhfp = interpolate_bhfp(df, thp_input, best_rate)
-    ax.scatter(thp_input, best_rate, optimal_bhfp, s=100)
+thp_vals = np.linspace(df["THP"].min(), df["THP"].max(), 40)
+rate_vals = np.linspace(df["Rate"].min(), df["Rate"].max(), 40)
 
-ax.set_xlabel("THP")
-ax.set_ylabel("Injection Rate")
-ax.set_zlabel("BHFP")
+THP_grid, RATE_grid = np.meshgrid(thp_vals, rate_vals)
+BHFP_grid = np.zeros_like(THP_grid)
 
-st.pyplot(fig)
+for i in range(THP_grid.shape[0]):
+    for j in range(THP_grid.shape[1]):
+        BHFP_grid[i, j] = interpolate_bhfp(df, THP_grid[i, j], RATE_grid[i, j])
 
 # -----------------------------
 # Display Optimization Result
 # -----------------------------
+fig = go.Figure()
+
+fig.add_trace(
+    go.Surface(
+        x=THP_grid,
+        y=RATE_grid,
+        z=BHFP_grid,
+        colorscale="Viridis",
+        opacity=0.8
+    )
+)
+
+if best_rate:
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[thp_input],
+            y=[best_rate],
+            z=[best_bhfp],
+            mode='markers',
+            marker=dict(size=8, color='red'),
+            name="Optimal Injection"
+        )
+    )
+
+fig.update_layout(
+    scene=dict(
+        xaxis_title="THP",
+        yaxis_title="Injection Rate",
+        zaxis_title="BHFP"
+    ),
+    height=700
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+
+
 
 st.divider()
+if best_rate:
+    st.success(f"Optimal Injection Rate: {best_rate}")
+    st.write(f"Resulting BHFP: {best_bhfp:.2f}")
+else:
+    st.warning("No safe injection rate found under the BHFP limit")
 
 st.subheader("Injection Optimization")
 
