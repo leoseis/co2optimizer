@@ -10,21 +10,34 @@ st.set_page_config(page_title="CO₂ VFP Optimizer", layout="wide")
 
 st.title("CO₂ Injection VFP Optimizer")
 
+st.subheader("Upload VFP File")
+
+uploaded_file = st.file_uploader(
+    "Upload Eclipse VFP (.INC) file",
+    type=["inc"]
+)
+
+
 # ---------------------------------------------------
 # Load Data
 # ---------------------------------------------------
-
 inc_path = "data/sample_vfp.inc"
 csv_path = "data/sample_vfp.csv"
 
-if not os.path.exists(csv_path):
+if uploaded_file is not None:
 
-    with open(inc_path, "rb") as f:
-        df = parse_eclipse_vfp(f)
+    df = parse_eclipse_vfp(uploaded_file)
 
-    df.to_csv(csv_path, index=False)
+else:
 
-df = pd.read_csv(csv_path)
+    if not os.path.exists(csv_path):
+
+        with open(inc_path, "rb") as f:
+            df = parse_eclipse_vfp(f)
+
+        df.to_csv(csv_path, index=False)
+
+    df = pd.read_csv(csv_path)
 
 # ---------------------------------------------------
 # Sidebar Controls
